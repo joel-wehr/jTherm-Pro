@@ -1,4 +1,3 @@
-// jTherm-Pro
 // Read data from MAX31855 chip on Adafruit breakout boards
 
 //      pins:
@@ -21,8 +20,33 @@ local tempOutStr = OutputPort("Sensor1 (F)", "string");
 local tempOut2    = OutputPort("Sensor2 (F)", "number");
 local tempOutStr2 = OutputPort("Sensor2 (F)", "string");
 local temp32 = 0;
-local farenheit = 0;
-local celcius = 0;
+farenheit <- 0;
+celcius <- 0;
+trigger1Min <- -1;
+trigger1Max <- 3000;
+trigger2Min <- -1;
+trigger2Max <- 3000;
+
+agent.on("Trigger1Min", function(data) {
+  //do something with data.. maybe write out to pins or something
+  trigger1Min = (data.trigger1min);
+  server.log("trigger1min set to " + data.trigger1min);
+});
+agent.on("Trigger1Max", function(data) {
+  //do something with data.. maybe write out to pins or something
+  trigger1Max = (data.trigger1max);
+  server.log("trigger1max set to " + data.trigger1max);
+});
+agent.on("Trigger2Min", function(data) {
+  //do something with data.. maybe write out to pins or something
+  trigger2Min = (data.trigger2min);
+  server.log("trigger1min set to " + data.trigger2min);
+});
+agent.on("Trigger2Max", function(data) {
+  //do something with data.. maybe write out to pins or something
+  trigger2Max = (data.trigger2max);
+  server.log("trigger2max set to " + data.trigger2max);
+});
 // Screen class to manage the LCD
 class Screen {
     port = null;
@@ -109,7 +133,7 @@ function readChip189(){
         // Begin converting Binary data for chip 1
     local tc = 0;
     if ((temp32[1] & 1) ==1){
-      
+    	
         //Error bit is set
 		
 		local errorcode = (temp32[3] & 7);// 7 is B00000111
@@ -193,6 +217,12 @@ function probe1() {
     tempOut.set(farenheit);
     tempOutStr.set(format("%.01f", farenheit));
     screen.set0("Probe 1: " + farenheit + "F"); // Write the first line
+    if (farenheit >= trigger1Max.tofloat()) {
+        agent.send("Probe1", farenheit);
+    }
+    else if (farenheit <= trigger1Min.tofloat()) {
+        agent.send("Probe1", farenheit);
+    }
 }
 // Read Probe 2
 function probe2() {    
@@ -205,14 +235,21 @@ function probe2() {
     tempOut2.set(farenheit);
     tempOutStr2.set(format("%.01f", farenheit));
     screen.set1("Probe 2: " + farenheit + "F"); // Write the first line
+    if (farenheit >= trigger2Max.tofloat()) {
+        agent.send("Probe2", farenheit);
+    }
+    else if (farenheit <= trigger2Min.tofloat()) {
+        agent.send("Probe2", farenheit);
+    }    
 }
 function loop() {
+    server.log("Triggers: " + trigger1Min + ", " + trigger1Max +", " + trigger2Min + ", " + trigger2Max);
     probe1();
     probe2();
     imp.wakeup(30, loop);
 }
 // Configure with the server
-imp.configure("jTherm-Pro", [], [tempOut, tempOutStr, tempOut2, tempOutStr2]);
+imp.configure("jTherm-Pro (Twilio)", [], [tempOut, tempOutStr, tempOut2, tempOutStr2]);
         screen <- Screen(port0);
         screen.clear_screen();
         screen.start();
